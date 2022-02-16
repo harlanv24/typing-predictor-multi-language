@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from cgitb import lookup
 import os
 import string
 import random
@@ -8,10 +9,9 @@ from keras.layers import Embedding, Dense, LSTM
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 input_dim = 100
-output_dim = 100
-input_len = 100
+output_dim = 256
 lstm_dim = 100
-epochs = 20
+epochs = 5
 dropout = 0.1
 seq_len = 100
 bs = 64
@@ -22,27 +22,17 @@ class MyModel():
     """
     def __init__(self):
         self.model = Sequential()
-        self.model.add(Embedding(input_dim, output_dim, input_length = input_len, dropout = dropout))
-        self.model.add(LSTM(lstm_dim, droupout_U=dropout, droupout_W=dropout))
+        self.model.add(Embedding(input_dim, output_dim))
+        self.model.add(LSTM(lstm_dim, dropout = dropout))
         self.model.add(Dense(2, activation = 'softmax'))
         self.model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics=['accuracy'])
+        self.vocab = None
     
     @classmethod
     def load_training_data(cls):
         with open('data/test_data.txt') as f:
             text = f.read().decode(encoding = 'utf-8')
-        vocab = sorted(set(text))
-        lookup_layer = tf.keras.layers.StringLookup(vocabulary = list(vocab), mask_token = None)
-        id_array = lookup_layer(tf.strings.unicode_split(text, input_encoding = 'UTF-8'))
-        data = tf.data.Dataset.from_tensor_slices(id_array)
-        data_batches = data.batch(seq_len+1, drop_remainder = True)
-        data_pairs = map()
-        for batch in data_batches:
-            input = batch[:-1]
-            output = batch[1:]
-            data_pairs[input] = output
-        data_pairs = (data_pairs.shuffle(bs).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE))
-        return data_pairs
+        return text, sorted(set(text))
 
     @classmethod
     def load_test_data(cls, fname):
@@ -62,7 +52,19 @@ class MyModel():
 
     def run_train(self, data, work_dir):
         # your code here 
-        self.model.fit(data, epochs = epochs, verbose = 2)
+        self.vocab = sorted(set(data))
+        print(len(self.vocab))
+        lookup_layer = tf.keras.layers.StringLookup(vocabulary = list(self.vocab), mask_token = None)
+        id_array = lookup_layer(tf.strings.unicode_split(data, input_encoding = 'UTF-8'))
+        data_tf = tf.data.Dataset.from_tensor_slices(id_array)
+        data_batches = data_tf.batch(seq_len+1, drop_remainder = True)
+        data_pairs = map()
+        for batch in data_batches:
+            input = batch[:-1]
+            output = batch[1:]
+            data_pairs[input] = output
+        data_pairs = (data_pairs.shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE))
+        self.model.fit(data_pairs, epochs = epochs, verbose = 2)
         
 
     def run_pred(self, data):
@@ -71,7 +73,9 @@ class MyModel():
         all_chars = string.ascii_letters
         for inp in data:
             # this model just predicts a random character each time
-            top_guesses = [random.choice(all_chars) for _ in range(3)]
+            lookup_layer = tf.keras.layers.StringLookup(vocabulary = list(self.vocab), mask_token = None)
+            inp_ids = lookup_layer(inp)
+            top_guesses = [self.model(inp_ids) for _ in range(3)]
             preds.append(''.join(top_guesses))
         return preds
 
