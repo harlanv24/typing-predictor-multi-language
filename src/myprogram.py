@@ -2,19 +2,47 @@
 import os
 import string
 import random
+import tensorflow as tf
+from keras.models import Sequential
+from keras.layers import Embedding, Dense, LSTM
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
+input_dim = 100
+output_dim = 100
+input_len = 100
+lstm_dim = 100
+epochs = 20
+dropout = 0.1
+seq_len = 100
+bs = 64
 
-class MyModel:
+class MyModel():
     """
     This is a starter model to get you started. Feel free to modify this file.
     """
-
+    def __init__(self):
+        self.model = Sequential()
+        self.model.add(Embedding(input_dim, output_dim, input_length = input_len, dropout = dropout))
+        self.model.add(LSTM(lstm_dim, droupout_U=dropout, droupout_W=dropout))
+        self.model.add(Dense(2, activation = 'softmax'))
+        self.model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics=['accuracy'])
+    
     @classmethod
     def load_training_data(cls):
-        # your code here
-        # this particular model doesn't train
-        return []
+        with open('data/test_data.txt') as f:
+            text = f.read().decode(encoding = 'utf-8')
+        vocab = sorted(set(text))
+        lookup_layer = tf.keras.layers.StringLookup(vocabulary = list(vocab), mask_token = None)
+        id_array = lookup_layer(tf.strings.unicode_split(text, input_encoding = 'UTF-8'))
+        data = tf.data.Dataset.from_tensor_slices(id_array)
+        data_batches = data.batch(seq_len+1, drop_remainder = True)
+        data_pairs = map()
+        for batch in data_batches:
+            input = batch[:-1]
+            output = batch[1:]
+            data_pairs[input] = output
+        data_pairs = (data_pairs.shuffle(bs).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE))
+        return data_pairs
 
     @classmethod
     def load_test_data(cls, fname):
@@ -33,8 +61,9 @@ class MyModel:
                 f.write('{}\n'.format(p))
 
     def run_train(self, data, work_dir):
-        # your code here
-        pass
+        # your code here 
+        self.model.fit(data, epochs = epochs, verbose = 2)
+        
 
     def run_pred(self, data):
         # your code here
@@ -48,17 +77,22 @@ class MyModel:
 
     def save(self, work_dir):
         # your code here
+        path = os.path.join(work_dir, 'trained_model')
+        save = tf.keras.callbacks.ModelCheckpoint(filepath = path, save_weight_only=True)
+        save(self)
         # this particular model has nothing to save, but for demonstration purposes we will save a blank file
-        with open(os.path.join(work_dir, 'model.checkpoint'), 'wt') as f:
-            f.write('dummy save')
+        # with open(os.path.join(work_dir, 'model.checkpoint'), 'wt') as f:
+            # f.write('dummy save')
 
     @classmethod
     def load(cls, work_dir):
         # your code here
+        path = os.path.join(work_dir, 'trained_model')
+        return tf.saved_model.load(path)
         # this particular model has nothing to load, but for demonstration purposes we will load a blank file
-        with open(os.path.join(work_dir, 'model.checkpoint')) as f:
-            dummy_save = f.read()
-        return MyModel()
+        # with open(os.path.join(work_dir, 'model.checkpoint')) as f:
+            # dummy_save = f.read()
+        # return MyModel()
 
 
 if __name__ == '__main__':
