@@ -8,7 +8,7 @@ from keras.models import Sequential
 from keras.layers import Embedding, Dense, LSTM
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-input_dim = 100
+input_dim = 70
 output_dim = 256
 lstm_dim = 100
 epochs = 5
@@ -22,17 +22,15 @@ class MyModel():
     """
     def __init__(self):
         self.model = Sequential()
-        self.model.add(Embedding(input_dim, output_dim))
         self.model.add(LSTM(lstm_dim, dropout = dropout))
-        self.model.add(Dense(2, activation = 'softmax'))
         self.model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics=['accuracy'])
         self.vocab = None
     
     @classmethod
     def load_training_data(cls):
-        with open('data/test_data.txt') as f:
-            text = f.read().decode(encoding = 'utf-8')
-        return text, sorted(set(text))
+        with open('data/test_data.txt', encoding='UTF-8') as f:
+            text = f.read()
+        return text
 
     @classmethod
     def load_test_data(cls, fname):
@@ -52,17 +50,17 @@ class MyModel():
 
     def run_train(self, data, work_dir):
         # your code here 
-        self.vocab = sorted(set(data))
+        self.vocab = set(data)
         print(len(self.vocab))
         lookup_layer = tf.keras.layers.StringLookup(vocabulary = list(self.vocab), mask_token = None)
         id_array = lookup_layer(tf.strings.unicode_split(data, input_encoding = 'UTF-8'))
         data_tf = tf.data.Dataset.from_tensor_slices(id_array)
         data_batches = data_tf.batch(seq_len+1, drop_remainder = True)
-        data_pairs = map()
-        for batch in data_batches:
-            input = batch[:-1]
-            output = batch[1:]
-            data_pairs[input] = output
+        def generate_map(batch):
+            input_text = batch[:-1]
+            target_text = batch[1:]
+            return input_text, target_text
+        data_pairs = data_batches.map(generate_map)
         data_pairs = (data_pairs.shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE))
         self.model.fit(data_pairs, epochs = epochs, verbose = 2)
         
