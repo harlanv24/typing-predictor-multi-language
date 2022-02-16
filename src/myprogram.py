@@ -33,21 +33,26 @@ def load_training_data():
     return train_X, train_Y, chars_to_id
 
 
-class MyModel(Sequential):
+class MyModel(tf.keras.Model):
     """
     This is a starter model to get you started. Feel free to modify this file.
     """
     def __init__(self, input_dim, output_dim, dense_dim, chars_to_id):
         super().__init__(self)
-        self.add(LSTM(128, input_shape=(input_dim, output_dim)))
-        self.add(Dropout(0.1))
-        self.add(Dense(dense_dim, activation = 'softmax'))
-        self.compile(optimizer = 'adam', loss = 'categorical_crossentropy')
+        self.lstm = LSTM(128, input_shape=(input_dim, output_dim))
+        self.dropout = Dropout(0.1)
+        self.dense = Dense(dense_dim, activation = 'softmax')
         self.epochs = 10
         self.seq_len = 100
         self.bs = 64
         self.chars_to_id = chars_to_id
 
+    def call(self, inputs):
+        x = inputs
+        x = self.lstm(inputs)
+        x = self.dropout(x)
+        x = self.dense(x)
+        return x
 
     @classmethod
     def load_test_data(cls, fname):
@@ -61,7 +66,8 @@ class MyModel(Sequential):
 
     def run_train(self, data_X, data_Y, work_dir):
         # your code here 
-        self.model.fit(data_X, data_Y, batch_size = self.bs, epochs = self.epochs, verbose = 2)
+        self.compile(optimizer = 'adam', loss = 'categorical_crossentropy')
+        self.fit(data_X, data_Y, batch_size = self.bs, epochs = self.epochs, verbose = 2)
     
     def run_pred(self, data):
         # your code here
