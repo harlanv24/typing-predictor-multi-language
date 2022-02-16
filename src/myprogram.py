@@ -9,7 +9,7 @@ from keras.models import Sequential
 from keras.utils import np_utils
 from keras.layers import Dropout, Dense, LSTM
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-import pickle
+
 
 def load_training_data():
     with open('data/test_data.txt', encoding='UTF-8') as f:
@@ -32,23 +32,18 @@ def load_training_data():
 
     return train_X, train_Y, chars_to_id
 
-def write_pred(preds, fname):
-    with open(fname, 'wt') as f:
-        for p in preds:
-            f.write('{}\n'.format(p))
 
-class MyModel(tf.keras.Model):
+class MyModel(Sequential):
     """
     This is a starter model to get you started. Feel free to modify this file.
     """
     def __init__(self, input_dim, output_dim, dense_dim, chars_to_id):
-        super().__init__()
-        self.model = Sequential()
-        self.model.add(LSTM(128, input_shape=(input_dim, output_dim)))
-        self.model.add(Dropout(0.1))
-        self.model.add(Dense(dense_dim, activation = 'softmax'))
-        self.model.compile(optimizer = 'adam', loss = 'categorical_crossentropy')
-        self.epochs = 5
+        super().__init__(self)
+        self.add(LSTM(128, input_shape=(input_dim, output_dim)))
+        self.add(Dropout(0.1))
+        self.add(Dense(dense_dim, activation = 'softmax'))
+        self.compile(optimizer = 'adam', loss = 'categorical_crossentropy')
+        self.epochs = 10
         self.seq_len = 100
         self.bs = 64
         self.chars_to_id = chars_to_id
@@ -80,12 +75,16 @@ class MyModel(tf.keras.Model):
             preds.append(''.join(top_guesses))
         return preds
 
+    def write_pred(preds, fname):
+        with open(fname, 'wt') as f:
+            for p in preds:
+                f.write('{}\n'.format(p))
+
     def save(self, work_dir):
         # your code here
         path = os.path.join(work_dir, 'trained_model')
         self.save(path)
-        # with open('trained_model.ckpt', 'wb') as f:
-        #    pickle.dump(self, f)
+        
         # this particular model has nothing to save, but for demonstration purposes we will save a blank file
         # with open(os.path.join(work_dir, 'model.checkpoint'), 'wt') as f:
             # f.write('dummy save')
@@ -95,8 +94,6 @@ class MyModel(tf.keras.Model):
         # your code here
         path = os.path.join(work_dir, 'trained_model')
         return tf.keras.models.load_model(path)
-        # with open('trained_model.ckpt', 'rb') as f:
-        #    pickle.load(f)
         # this particular model has nothing to load, but for demonstration purposes we will load a blank file
         # with open(os.path.join(work_dir, 'model.checkpoint')) as f:
             # dummy_save = f.read()
@@ -134,6 +131,6 @@ if __name__ == '__main__':
         pred = model.run_pred(model, test_data)
         print('Writing predictions to {}'.format(args.test_output))
         assert len(pred) == len(test_data), 'Expected {} predictions but got {}'.format(len(test_data), len(pred))
-        write_pred(pred, args.test_output)
+        model.write_pred(pred, args.test_output)
     else:
         raise NotImplementedError('Unknown mode {}'.format(args.mode))
