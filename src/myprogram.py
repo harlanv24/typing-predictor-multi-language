@@ -11,9 +11,6 @@ from keras.layers import Dropout, Dense, LSTM
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import pickle
 
-
-
-
 def load_training_data():
     with open('data/test_data.txt', encoding='UTF-8') as f:
         text = f.read()
@@ -35,39 +32,23 @@ def load_training_data():
 
     return train_X, train_Y, chars_to_id
 
-    '''
-    vocab = set(text)
-    print(len(vocab))
-    lookup_layer = tf.keras.layers.StringLookup(vocabulary = list(text), mask_token = None)
-    id_array = lookup_layer(tf.strings.unicode_split(text, input_encoding = 'UTF-8'))
-    data_tf = tf.data.Dataset.from_tensor_slices(id_array)
-    data_batches = data_tf.batch(seq_len+1, drop_remainder = True)
-    def generate_map(batch):
-        input_text = batch[:-1]
-        target_text = batch[1:]
-        return input_text, target_text
-    data_pairs = data_batches.map(generate_map)
-    data_pairs = (data_pairs.shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE))
-    return data_pairs
-    '''
-
-
 def write_pred(preds, fname):
     with open(fname, 'wt') as f:
         for p in preds:
             f.write('{}\n'.format(p))
 
-class MyModel():
+class MyModel(tf.keras.Model):
     """
     This is a starter model to get you started. Feel free to modify this file.
     """
     def __init__(self, input_dim, output_dim, dense_dim, chars_to_id):
+        super().__init__()
         self.model = Sequential()
         self.model.add(LSTM(128, input_shape=(input_dim, output_dim)))
         self.model.add(Dropout(0.1))
         self.model.add(Dense(dense_dim, activation = 'softmax'))
         self.model.compile(optimizer = 'adam', loss = 'categorical_crossentropy')
-        self.epochs = 10
+        self.epochs = 5
         self.seq_len = 100
         self.bs = 64
         self.chars_to_id = chars_to_id
@@ -102,10 +83,9 @@ class MyModel():
     def save(self, work_dir):
         # your code here
         path = os.path.join(work_dir, 'trained_model')
-        # save = tf.keras.callbacks.ModelCheckpoint(filepath = path, save_weight_only=True)
-        # save(self.model)
-        with open(path, 'wb') as f:
-            pickle.dump(self, f)
+        self.save(path)
+        # with open('trained_model.ckpt', 'wb') as f:
+        #    pickle.dump(self, f)
         # this particular model has nothing to save, but for demonstration purposes we will save a blank file
         # with open(os.path.join(work_dir, 'model.checkpoint'), 'wt') as f:
             # f.write('dummy save')
@@ -114,8 +94,9 @@ class MyModel():
     def load(cls, work_dir):
         # your code here
         path = os.path.join(work_dir, 'trained_model')
-        with open(path, 'rb') as f:
-            pickle.load(f)
+        return tf.keras.models.load_model(path)
+        # with open('trained_model.ckpt', 'rb') as f:
+        #    pickle.load(f)
         # this particular model has nothing to load, but for demonstration purposes we will load a blank file
         # with open(os.path.join(work_dir, 'model.checkpoint')) as f:
             # dummy_save = f.read()
@@ -150,7 +131,7 @@ if __name__ == '__main__':
         print('Loading test data from {}'.format(args.test_data))
         test_data = MyModel.load_test_data(args.test_data)
         print('Making predictions')
-        pred = run_pred(model, test_data)
+        pred = model.run_pred(model, test_data)
         print('Writing predictions to {}'.format(args.test_output))
         assert len(pred) == len(test_data), 'Expected {} predictions but got {}'.format(len(test_data), len(pred))
         write_pred(pred, args.test_output)
