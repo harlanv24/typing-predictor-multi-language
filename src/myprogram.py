@@ -9,20 +9,21 @@ from keras.models import Sequential
 from keras.utils import np_utils
 from keras.layers import Dropout, Dense, LSTM
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+import pickle
 
 
 lstm_dim = 128
-epochs = 5
+epochs = 10
 dropout = 0.1
 seq_len = 100
 bs = 64
+chars_to_id = dict()
+id_to_chars = dict()
 
 def load_training_data():
     with open('data/test_data.txt', encoding='UTF-8') as f:
         text = f.read()
     chars = sorted(list(set(text)))
-    chars_to_id = dict()
-    id_to_chars = dict()
     for i, c in enumerate(chars):
         chars_to_id[c] = i
         id_to_chars[i] = c
@@ -33,7 +34,7 @@ def load_training_data():
         train_X.append([chars_to_id[c] for c in text[i:i+seq_len]])
         train_Y.append([chars_to_id[c] for c in text[i+seq_len]])
     train_X = np.reshape(train_X, (len(train_X), seq_len, 1))
-    train_Y = np.utils.to_categorical(train_Y)
+    train_Y = np_utils.to_categorical(train_Y)
 
     return train_X, train_Y
     
@@ -53,16 +54,34 @@ def load_training_data():
     return data_pairs
     '''
 
+def run_pred(model, data):
+    # your code here
+    preds = []
+    all_chars = string.ascii_letters
+    for inp in data:
+        inp_to_id = [chars_to_id[c] for c in inp]
+        inp_to_id = np.reshape(inp_to_id, (1, seq_len, 1))
+        # this model just predicts a random character each time
+        top_guesses = [model.predict(inp_to_id) for _ in range(3)]
+        preds.append(''.join(top_guesses))
+    return preds
+
+
+def write_pred(preds, fname):
+    with open(fname, 'wt') as f:
+        for p in preds:
+            f.write('{}\n'.format(p))
+
 class MyModel():
     """
     This is a starter model to get you started. Feel free to modify this file.
     """
     def __init__(self, input_dim, output_dim, dense_dim):
         self.model = Sequential()
-        self.model.add(LSTM(lstm_dim, input_shape=(input_dim, output_dim), return_sequences = True))
+        self.model.add(LSTM(lstm_dim, input_shape=(input_dim, output_dim)))
         self.model.add(Dropout(dropout))
         self.model.add(Dense(dense_dim, activation = 'softmax'))
-        self.model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics=['accuracy'])
+        self.model.compile(optimizer = 'adam', loss = 'categorical_crossentropy')
         self.vocab = None
 
     @classmethod
@@ -75,34 +94,17 @@ class MyModel():
                 data.append(inp)
         return data
 
-    @classmethod
-    def write_pred(cls, preds, fname):
-        with open(fname, 'wt') as f:
-            for p in preds:
-                f.write('{}\n'.format(p))
-
     def run_train(self, data_X, data_Y, work_dir):
         # your code here 
-        self.model.fit(data_X, data_Y, epochs = epochs, verbose = 2)
-        
-
-    def run_pred(self, data):
-        # your code here
-        preds = []
-        all_chars = string.ascii_letters
-        for inp in data:
-            # this model just predicts a random character each time
-            lookup_layer = tf.keras.layers.StringLookup(vocabulary = list(self.vocab), mask_token = None)
-            inp_ids = lookup_layer(inp)
-            top_guesses = [self.model(inp_ids) for _ in range(3)]
-            preds.append(''.join(top_guesses))
-        return preds
+        self.model.fit(data_X, data_Y, batch_size = bs, epochs = epochs, verbose = 2)
+    
 
     def save(self, work_dir):
         # your code here
         path = os.path.join(work_dir, 'trained_model')
-        save = tf.keras.callbacks.ModelCheckpoint(filepath = path, save_weight_only=True)
-        save(self.model)
+        # save = tf.keras.callbacks.ModelCheckpoint(filepath = path, save_weight_only=True)
+        # save(self.model)
+        self.model.save(path)
         # this particular model has nothing to save, but for demonstration purposes we will save a blank file
         # with open(os.path.join(work_dir, 'model.checkpoint'), 'wt') as f:
             # f.write('dummy save')
@@ -146,9 +148,9 @@ if __name__ == '__main__':
         print('Loading test data from {}'.format(args.test_data))
         test_data = MyModel.load_test_data(args.test_data)
         print('Making predictions')
-        pred = model.run_pred(test_data)
+        pred = run_pred(model, test_data)
         print('Writing predictions to {}'.format(args.test_output))
         assert len(pred) == len(test_data), 'Expected {} predictions but got {}'.format(len(test_data), len(pred))
-        model.write_pred(pred, args.test_output)
+        write_pred(pred, args.test_output)
     else:
         raise NotImplementedError('Unknown mode {}'.format(args.mode))
