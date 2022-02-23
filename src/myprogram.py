@@ -5,6 +5,7 @@ import string
 import random
 import tensorflow as tf
 import numpy as np
+import pickle
 from keras.models import Sequential
 from keras.utils import np_utils
 from keras.layers import Dropout, Dense, LSTM
@@ -103,9 +104,12 @@ class MyModel():
     def save(self, work_dir):
         # your code here
         path = os.path.join(work_dir, 'trained_model')
-        # save = tf.keras.callbacks.ModelCheckpoint(filepath = path, save_weight_only=True)
-        # save(self.model)
+        save = tf.keras.callbacks.ModelCheckpoint(filepath = path, save_weight_only=True)
+        save(self.model)
         self.model.save(path)
+
+        with open(path + "/chars_to_id_dict.pkl", "w") as pfile:
+            pickle.dump(chars_to_id, pfile)
         # this particular model has nothing to save, but for demonstration purposes we will save a blank file
         # with open(os.path.join(work_dir, 'model.checkpoint'), 'wt') as f:
             # f.write('dummy save')
@@ -114,6 +118,9 @@ class MyModel():
     def load(cls, work_dir):
         # your code here
         path = os.path.join(work_dir, 'trained_model')
+        with open(path + "/chars_to_id_dict.pkl",  "r") as pfile:
+            chars_to_id = pickle.load(pfile)
+            
         return tf.saved_model.load(path)
         # this particular model has nothing to load, but for demonstration purposes we will load a blank file
         # with open(os.path.join(work_dir, 'model.checkpoint')) as f:
