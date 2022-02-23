@@ -59,13 +59,19 @@ def run_pred(model, data):
     preds = []
     all_chars = string.ascii_letters
     for inp in data:
-        #inp_to_id = [chars_to_id[c] for c in inp]
-        #inp_to_id = np.reshape(inp_to_id, (1, seq_len, 1))
+        # PAD HERE
+        temp = []
+        print(inp)
+        inp_to_id = [chars_to_id[c] for c in inp]
+        temp.append(inp_to_id)
+        padded_ids = tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = 100, padding='pre')[0]
+        inp_to_id = np.reshape(padded_ids, (1, seq_len, 1))
         # this model just predicts a random character each time
-        #top_guesses = [model.predict(inp_to_id) for _ in range(3)]
-        #preds.append(''.join(top_guesses))
-        top_guesses = [random.choice(all_chars) for _ in range(3)]
-        preds.append(''.join(top_guesses))
+        top_guesses = model.predict(inp_to_id)
+        sorted_guesses = sorted(enumerate(top_guesses[0]), key = lambda e:  e[1], reverse=True)
+        top_3 = [id_to_chars[c[0]] for c in sorted_guesses[:3]]
+        # top_guesses = [random.choice(all_chars) for _ in range(3)]
+        preds.append(''.join(top_3))
     return preds
 
 
@@ -104,12 +110,12 @@ class MyModel():
     def save(self, work_dir):
         # your code here
         path = os.path.join(work_dir, 'trained_model')
-        save = tf.keras.callbacks.ModelCheckpoint(filepath = path, save_weight_only=True)
-        save(self.model)
+        # save = tf.keras.callbacks.ModelCheckpoint(filepath = path, save_weight_only=True)
+        # save(self.model)
         self.model.save(path)
 
-        with open(path + "/chars_to_id_dict.pkl", "w") as pfile:
-            pickle.dump(chars_to_id, pfile)
+        with open(path + "/chars_to_id_dict.pkl", "wb") as pfile:
+            pickle.dump([chars_to_id, id_to_chars], pfile)
         # this particular model has nothing to save, but for demonstration purposes we will save a blank file
         # with open(os.path.join(work_dir, 'model.checkpoint'), 'wt') as f:
             # f.write('dummy save')
@@ -117,11 +123,11 @@ class MyModel():
     @classmethod
     def load(cls, work_dir):
         # your code here
+        global chars_to_id, id_to_chars
         path = os.path.join(work_dir, 'trained_model')
-        with open(path + "/chars_to_id_dict.pkl",  "r") as pfile:
-            chars_to_id = pickle.load(pfile)
-            
-        return tf.saved_model.load(path)
+        with open(path + "/chars_to_id_dict.pkl",  "rb") as pfile:
+            chars_to_id, id_to_chars = pickle.load(pfile)
+        return tf.keras.models.load_model(path)
         # this particular model has nothing to load, but for demonstration purposes we will load a blank file
         # with open(os.path.join(work_dir, 'model.checkpoint')) as f:
             # dummy_save = f.read()
