@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-from cgitb import lookup
 import os
-import string
 import random
 import tensorflow as tf
 import numpy as np
@@ -13,16 +11,16 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 
 lstm_dim = 128
-epochs = 10
+epochs = 20
 dropout = 0.1
-seq_len = 100
+seq_len = 5
 bs = 64
 chars_to_id = dict()
 id_to_chars = dict()
 
 def load_training_data():
-    with open('data/test_data.txt', encoding='UTF-8') as f:
-        text = f.read()
+    with open('data/mergedfiles2.txt', encoding='UTF-8') as f:
+        text = f.read().replace('\n',' ')
     chars = sorted(list(set(text)))
     for i, c in enumerate(chars):
         chars_to_id[c] = i
@@ -38,45 +36,26 @@ def load_training_data():
 
     return train_X, train_Y
     
-    '''
-    vocab = set(text)
-    print(len(vocab))
-    lookup_layer = tf.keras.layers.StringLookup(vocabulary = list(text), mask_token = None)
-    id_array = lookup_layer(tf.strings.unicode_split(text, input_encoding = 'UTF-8'))
-    data_tf = tf.data.Dataset.from_tensor_slices(id_array)
-    data_batches = data_tf.batch(seq_len+1, drop_remainder = True)
-    def generate_map(batch):
-        input_text = batch[:-1]
-        target_text = batch[1:]
-        return input_text, target_text
-    data_pairs = data_batches.map(generate_map)
-    data_pairs = (data_pairs.shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE))
-    return data_pairs
-    '''
 
 def run_pred(model, data):
     # your code here
+    print(id_to_chars)
     preds = []
-    all_chars = string.ascii_letters
     for inp in data:
-        # PAD HERE
         temp = []
-        print(inp)
         inp_to_id = [chars_to_id[c] for c in inp]
         temp.append(inp_to_id)
-        padded_ids = tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = 100, padding='pre')[0]
+        padded_ids = tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre')[0]
         inp_to_id = np.reshape(padded_ids, (1, seq_len, 1))
-        # this model just predicts a random character each time
         top_guesses = model.predict(inp_to_id)
         sorted_guesses = sorted(enumerate(top_guesses[0]), key = lambda e:  e[1], reverse=True)
         top_3 = [id_to_chars[c[0]] for c in sorted_guesses[:3]]
-        # top_guesses = [random.choice(all_chars) for _ in range(3)]
         preds.append(''.join(top_3))
     return preds
 
 
 def write_pred(preds, fname):
-    with open(fname, 'wt') as f:
+    with open(fname, 'wt', encoding='UTF-8') as f:
         for p in preds:
             f.write('{}\n'.format(p))
 
