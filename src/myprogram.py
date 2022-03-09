@@ -51,6 +51,7 @@ def run_pred(model, data):
         sorted_guesses = sorted(enumerate(top_guesses[0]), key = lambda e:  e[1], reverse=True)
         top_3 = [id_to_chars[c[0]] for c in sorted_guesses[:3]]
         preds.append(''.join(top_3))
+        print(f'{inp}, {preds[-1]}')
     return preds
 
 
