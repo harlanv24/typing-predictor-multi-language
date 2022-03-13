@@ -21,6 +21,7 @@ threshold = 10
 chars_to_id = dict()
 id_to_chars = dict()
 language_set = ['zh', 'es','en', 'hi', 'ar', 'pt', 'bn', 'ru', 'ja', 'fr']
+models_dict = dict()
 
 def load_training_data(language):
     # loop through languages, store model for every language
@@ -46,7 +47,7 @@ def load_training_data(language):
     train_X = []
     train_Y = []
     
-    with open(f'data/{language}/mergedfiles2.txt', encoding='UTF-8') as f:
+    with open(f'data/{language}/mergedfiles.txt', encoding='UTF-8') as f:
         for text in f:
             text = text.strip()
             for i in range(min(seq_len-1, len(text)-1)):
@@ -60,7 +61,7 @@ def load_training_data(language):
         train_Y = np_utils.to_categorical(train_Y)
     return train_X, train_Y
 
-def run_pred(model, data):
+def run_pred(data):
     # your code here
     print(id_to_chars)
     preds = []
@@ -68,12 +69,19 @@ def run_pred(model, data):
     for inp in data:
         inp, correct = inp.split("\t")
         # check for language type here
+        lang_pred = detect(inp)
+        if lang_pred == 'zh-cn':
+            lang_pred = 'zh'
+        
+        if lang_pred not in language_set:
+            lang_pred = 'en'
+
         temp = []
         inp_to_id = [chars_to_id[c] if c in chars_to_id else chars_to_id['<unk>'] for c in inp]
         temp.append(inp_to_id)
         padded_ids = tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre', value=-1)[0]
         inp_to_id = np.reshape(padded_ids, (1, seq_len, 1))
-        top_guesses = model.predict(inp_to_id)
+        top_guesses = models_dict[lang_pred].predict(inp_to_id)
         sorted_guesses = sorted(enumerate(top_guesses[0]), key = lambda e:  e[1], reverse=True)
         top_3 = [id_to_chars[c[0]] for c in sorted_guesses[:3]]
         preds.append(''.join(top_3))
@@ -173,12 +181,15 @@ if __name__ == '__main__':
         else:
             model_train_activity(language)
     elif args.mode == 'test':
-        print(f'Loading model for {language}')
-        model = MyModel.load(args.work_dir, language)
+        for l in language_set:
+            print(f'Loading model for {l}')
+            model = MyModel.load(args.work_dir, l)
+            models_dict[l] = model
+
         print('Loading test data from {}'.format(args.test_data))
         test_data = MyModel.load_test_data(args.test_data)
         print('Making predictions')
-        pred = run_pred(model, test_data)
+        pred = run_pred(test_data)
         print('Writing predictions to {}'.format(args.test_output))
         assert len(pred) == len(test_data), 'Expected {} predictions but got {}'.format(len(test_data), len(pred))
         write_pred(pred, args.test_output)
