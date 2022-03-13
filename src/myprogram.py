@@ -33,15 +33,15 @@ def load_training_data():
     with open('data/mergedfiles2.txt', encoding='UTF-8') as f:
         for text in f:
             text = text.strip()
-            for i in range(seq_len-1):
+            for i in range(min(seq_len-1, len(text)-1)):
                 temp = [[chars_to_id[c] for c in text[:i+1]]]
                 train_X.append(tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre', value=-1)[0])
                 train_Y.append([chars_to_id[c] for c in text[i+1]])
             for i in range(len(text)-seq_len):
                 train_X.append([chars_to_id[c] for c in text[i:i+seq_len]])
                 train_Y.append([chars_to_id[c] for c in text[i+seq_len]])
-            train_X = np.reshape(train_X, (len(train_X), seq_len, 1))
-            train_Y = np_utils.to_categorical(train_Y)
+        train_X = np.reshape(train_X, (len(train_X), seq_len, 1))
+        train_Y = np_utils.to_categorical(train_Y)
 
     return train_X, train_Y
     
@@ -113,7 +113,7 @@ class MyModel():
             # f.write('dummy save')
 
     @classmethod
-    def load(cls, work_dir, test_data):
+    def load(cls, work_dir):
         # your code here
         global chars_to_id, id_to_chars
         path = os.path.join(work_dir, 'trained_model')
