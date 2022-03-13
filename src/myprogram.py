@@ -29,7 +29,7 @@ def load_training_data():
     train_X = []
     train_Y = []
     for i in range(seq_len-1):
-        temp = [chars_to_id[c] for c in text[:i]]
+        temp = [[chars_to_id[c] for c in text[:i+1]]]
         train_X.append(tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre', value=-1)[0])
         train_Y.append([chars_to_id[c] for c in text[i+1]])
     for i in range(len(text)-seq_len):
