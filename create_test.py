@@ -11,8 +11,13 @@ if __name__ == '__main__':
 
     with open(args.file, "r") as data_file, open(args.output_file, "w") as test_file:
         for line in data_file:
-            line = line.strip()
-            if not line:
+            if not line.strip():
                 continue
-            truncate = int(random() * len(line)//2 + len(line)//2)
-            print(f"{line[:truncate]}\t{line[truncate]}", file=test_file)
+            lines = line.strip().split(".")
+            for short_line in lines: 
+                if len(short_line) <= 20:
+                    continue
+                
+                truncate = int(random() * 10 + 10)
+                print(short_line, truncate)
+                print(f"{short_line[:truncate]}\t{short_line[truncate]}", file=test_file)
