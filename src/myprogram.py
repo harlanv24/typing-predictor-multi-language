@@ -18,8 +18,8 @@ bs = 64
 chars_to_id = dict()
 id_to_chars = dict()
 
+df = pd.read_csv('data/sentences_all_languages.csv', delimiter='\t', encoding='utf-16') 
 def load_training_data(language):
-    df = pd.read_csv('data/sentences_all_languages.csv', delimiter='\t', encoding='utf-16') 
     text = ' '.join(df[df['1'] == language]['0'])
     chars = sorted(list(set(text)))
     for i, c in enumerate(chars):
@@ -129,17 +129,24 @@ if __name__ == '__main__':
     random.seed(0)
 
     if args.mode == 'train':
+        def model_train_activity(language):
+            train_X, train_Y = load_training_data(language)
+            print(f'Instatiating model for {language}')
+            model = MyModel(train_X.shape[1], train_X.shape[2], train_Y.shape[1], language)
+            print(f'Training for {language}')
+            model.run_train(train_X, train_Y, args.work_dir)
+            print(f'Saving model {language}')
+            model.save(args.work_dir)
+
         if not os.path.isdir(args.work_dir):
             print('Making working directory {}'.format(args.work_dir))
             os.makedirs(args.work_dir)
         print('Loading training data')
-        train_X, train_Y = load_training_data(args.language)
-        print('Instatiating model')
-        model = MyModel(train_X.shape[1], train_X.shape[2], train_Y.shape[1], language)
-        print('Training')
-        model.run_train(train_X, train_Y, args.work_dir)
-        print('Saving model')
-        model.save(args.work_dir)
+        if language == 'all':
+            for l in set(df['1']):
+                model_train_activity(l)
+        else:
+            model_train_activity(language)
     elif args.mode == 'test':
         print(f'Loading model for {language}')
         model = MyModel.load(args.work_dir, language)
