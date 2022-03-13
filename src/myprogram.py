@@ -28,6 +28,10 @@ def load_training_data():
 
     train_X = []
     train_Y = []
+    for i in range(seq_len-1):
+        temp = [chars_to_id[c] for c in text[:i]]
+        train_X.append(tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre', value=-1)[0])
+        train_Y.append([chars_to_id[c] for c in text[i+1]])
     for i in range(len(text)-seq_len):
         train_X.append([chars_to_id[c] for c in text[i:i+seq_len]])
         train_Y.append([chars_to_id[c] for c in text[i+seq_len]])
@@ -45,7 +49,7 @@ def run_pred(model, data):
         temp = []
         inp_to_id = [chars_to_id[c] for c in inp]
         temp.append(inp_to_id)
-        padded_ids = tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre')[0]
+        padded_ids = tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre', value=-1)[0]
         inp_to_id = np.reshape(padded_ids, (1, seq_len, 1))
         top_guesses = model.predict(inp_to_id)
         sorted_guesses = sorted(enumerate(top_guesses[0]), key = lambda e:  e[1], reverse=True)
