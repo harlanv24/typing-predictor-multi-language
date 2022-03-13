@@ -4,56 +4,82 @@ import random
 import tensorflow as tf
 import numpy as np
 import pickle
+from langdetect import detect
+from keras.optimizers import *
 from keras.models import Sequential
 from keras.utils import np_utils
 from keras.layers import Dropout, Dense, LSTM
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-import pandas as pd
 
+# dictionary of language -> model here, to be accessed for predictions once input language is detected
 lstm_dim = 128
-epochs = 20
+epochs = 30
 dropout = 0.1
-seq_len = 5
+seq_len = 7
 bs = 64
+threshold = 10
 chars_to_id = dict()
 id_to_chars = dict()
+language_set = ['zh', 'es','en', 'hi', 'ar', 'pt', 'bn', 'ru', 'ja', 'fr']
 
-df = pd.read_csv('data/sentences_all_languages.csv', delimiter='\t', encoding='utf-16') 
 def load_training_data(language):
-    text = ' '.join(df[df['1'] == language]['0'])
-    chars = sorted(list(set(text)))
+    # loop through languages, store model for every language
+    with open(f'data/{language}/mergedfiles.txt', encoding='UTF-8') as f:
+        text = f.read().replace('\n',' ')
+    counts = {}
+    for char in text:
+        if char in counts:
+            counts[char] += 1
+        else:
+            counts[char] = 1
+    unique_chars = []
+    for k, v in counts.items():
+        if v > threshold:
+            unique_chars.append(k)
+    chars = sorted(unique_chars)
+
     for i, c in enumerate(chars):
         chars_to_id[c] = i
         id_to_chars[i] = c
-
+    chars_to_id['<unk>'] = -2
+    id_to_chars[-2] = '<unk>'
     train_X = []
     train_Y = []
-    for i in range(len(text)-seq_len):
-        train_X.append([chars_to_id[c] for c in text[i:i+seq_len]])
-        train_Y.append([chars_to_id[c] for c in text[i+seq_len]])
-    train_X = np.reshape(train_X, (len(train_X), seq_len, 1))
-    train_Y = np_utils.to_categorical(train_Y)
-
-    return train_X, train_Y
     
+    with open(f'data/{language}/mergedfiles2.txt', encoding='UTF-8') as f:
+        for text in f:
+            text = text.strip()
+            for i in range(min(seq_len-1, len(text)-1)):
+                temp = [[chars_to_id[c] if c in chars_to_id else chars_to_id['<unk>'] for c in text[:i+1]]]
+                train_X.append(tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre', value=-1)[0])
+                train_Y.append([chars_to_id[c] if c in chars_to_id else chars_to_id['<unk>'] for c in text[i+1]])
+            for i in range(len(text)-seq_len):
+                train_X.append([chars_to_id[c] if c in chars_to_id else chars_to_id['<unk>'] for c in text[i:i+seq_len]])
+                train_Y.append([chars_to_id[c] if c in chars_to_id else chars_to_id['<unk>'] for c in text[i+seq_len]])
+        train_X = np.reshape(train_X, (len(train_X), seq_len, 1))
+        train_Y = np_utils.to_categorical(train_Y)
+    return train_X, train_Y
 
 def run_pred(model, data):
     # your code here
     print(id_to_chars)
     preds = []
+    right = 0
     for inp in data:
+        inp, correct = inp.split("\t")
+        # check for language type here
         temp = []
-        inp_to_id = [chars_to_id[c] for c in inp]
+        inp_to_id = [chars_to_id[c] if c in chars_to_id else chars_to_id['<unk>'] for c in inp]
         temp.append(inp_to_id)
-        padded_ids = tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre')[0]
+        padded_ids = tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre', value=-1)[0]
         inp_to_id = np.reshape(padded_ids, (1, seq_len, 1))
         top_guesses = model.predict(inp_to_id)
         sorted_guesses = sorted(enumerate(top_guesses[0]), key = lambda e:  e[1], reverse=True)
         top_3 = [id_to_chars[c[0]] for c in sorted_guesses[:3]]
         preds.append(''.join(top_3))
-        print(f'{inp}, {preds[-1]}')
+        right += 1 if correct in top_3 else 0
+    print(right/len(preds))
     return preds
-
 
 def write_pred(preds, fname):
     with open(fname, 'wt', encoding='UTF-8') as f:
@@ -87,7 +113,6 @@ class MyModel():
         # your code here 
         self.model.fit(data_X, data_Y, batch_size = bs, epochs = epochs, verbose = 2)
     
-
     def save(self, work_dir):
         # your code here
         path = os.path.join(work_dir, f'trained_model_{self.language}')
