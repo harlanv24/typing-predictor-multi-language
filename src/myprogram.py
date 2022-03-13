@@ -20,7 +20,7 @@ bs = 64
 threshold = 10
 chars_to_id = dict()
 id_to_chars = dict()
-language_set = ['zh-cn', 'es','en', 'hi', 'ar', 'pt', 'bn', 'ru', 'ja', 'fr']
+language_set = ['zh', 'es','en', 'hi', 'ar', 'pt', 'bn', 'ru', 'ja', 'fr']
 
 def load_training_data():
     # loop through languages, store model for every language
@@ -111,7 +111,6 @@ class MyModel():
         # your code here 
         self.model.fit(data_X, data_Y, batch_size = bs, epochs = epochs, verbose = 2)
     
-
     def save(self, work_dir):
         # your code here
         path = os.path.join(work_dir, 'trained_model')
