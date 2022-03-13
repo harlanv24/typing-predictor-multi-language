@@ -4,33 +4,47 @@ import random
 import tensorflow as tf
 import numpy as np
 import pickle
+from keras.optimizers import *
 from keras.models import Sequential
 from keras.utils import np_utils
 from keras.layers import Dropout, Dense, LSTM
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-
+# dictionary of language -> model here, to be accessed for predictions once input language is detected
 lstm_dim = 128
-epochs = 20
+epochs = 30
 dropout = 0.1
-seq_len = 5
+seq_len = 7
 bs = 64
+threshold = 10
 chars_to_id = dict()
 id_to_chars = dict()
 
 def load_training_data():
-    with open('data/mergedfiles2.txt', encoding='UTF-8') as f:
+    # loop through languages, store model for every language
+    with open('data/mergedfiles.txt', encoding='UTF-8') as f:
         text = f.read().replace('\n',' ')
-    chars = sorted(list(set(text)))
+    counts = {}
+    for char in text:
+        if char in counts:
+            counts[char] += 1
+        else:
+            counts[char] = 1
+    unique_chars = []
+    for k, v in counts.items():
+        if v > threshold:
+            unique_chars.append(k)
+    chars = sorted(unique_chars)
     for i, c in enumerate(chars):
         chars_to_id[c] = i
         id_to_chars[i] = c
-
+    chars_to_id['<unk>'] = -2
+    id_to_chars[-2] = '<unk>'
     train_X = []
     train_Y = []
     for i in range(len(text)-seq_len):
-        train_X.append([chars_to_id[c] for c in text[i:i+seq_len]])
-        train_Y.append([chars_to_id[c] for c in text[i+seq_len]])
+        train_X.append([chars_to_id[c] if c in chars_to_id else chars_to_id['<unk>'] for c in text[i:i+seq_len]])
+        train_Y.append([chars_to_id[c] if c in chars_to_id else chars_to_id['<unk>'] for c in text[i+seq_len]])
     train_X = np.reshape(train_X, (len(train_X), seq_len, 1))
     train_Y = np_utils.to_categorical(train_Y)
 
@@ -42,8 +56,9 @@ def run_pred(model, data):
     print(id_to_chars)
     preds = []
     for inp in data:
+        # check for language type here
         temp = []
-        inp_to_id = [chars_to_id[c] for c in inp]
+        inp_to_id = [chars_to_id[c] if c in chars_to_id else chars_to_id['<unk>'] for c in inp]
         temp.append(inp_to_id)
         padded_ids = tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre')[0]
         inp_to_id = np.reshape(padded_ids, (1, seq_len, 1))
