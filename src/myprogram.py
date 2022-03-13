@@ -4,6 +4,7 @@ import random
 import tensorflow as tf
 import numpy as np
 import pickle
+from langdetect import detect
 from keras.models import Sequential
 from keras.utils import np_utils
 from keras.layers import Dropout, Dense, LSTM
@@ -17,6 +18,7 @@ seq_len = 5
 bs = 64
 chars_to_id = dict()
 id_to_chars = dict()
+language_set = ['en']
 
 def load_training_data():
     with open('data/mergedfiles2.txt', encoding='UTF-8') as f:
@@ -104,10 +106,15 @@ class MyModel():
             # f.write('dummy save')
 
     @classmethod
-    def load(cls, work_dir):
+    def load(cls, work_dir, test_data):
         # your code here
+        language = detect(test_data)
+        if language not in language_set:
+            language = 'en'
+        model_name = 'trained_model-'+language
+
         global chars_to_id, id_to_chars
-        path = os.path.join(work_dir, 'trained_model')
+        path = os.path.join(work_dir, model_name)
         with open(path + "/chars_to_id_dict.pkl",  "rb") as pfile:
             chars_to_id, id_to_chars = pickle.load(pfile)
         return tf.keras.models.load_model(path)
@@ -140,10 +147,10 @@ if __name__ == '__main__':
         print('Saving model')
         model.save(args.work_dir)
     elif args.mode == 'test':
-        print('Loading model')
-        model = MyModel.load(args.work_dir)
         print('Loading test data from {}'.format(args.test_data))
         test_data = MyModel.load_test_data(args.test_data)
+        print('Loading model')
+        model = MyModel.load(args.work_dir, test_data)
         print('Making predictions')
         pred = run_pred(model, test_data)
         print('Writing predictions to {}'.format(args.test_output))
