@@ -9,7 +9,6 @@ from keras.utils import np_utils
 from keras.layers import Dropout, Dense, LSTM
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-
 lstm_dim = 128
 epochs = 20
 dropout = 0.1
@@ -28,15 +27,19 @@ def load_training_data():
 
     train_X = []
     train_Y = []
-    for i in range(seq_len-1):
-        temp = [chars_to_id[c] for c in text[:i]]
-        train_X.append(tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre', value=-1)[0])
-        train_Y.append([chars_to_id[c] for c in text[i+1]])
-    for i in range(len(text)-seq_len):
-        train_X.append([chars_to_id[c] for c in text[i:i+seq_len]])
-        train_Y.append([chars_to_id[c] for c in text[i+seq_len]])
-    train_X = np.reshape(train_X, (len(train_X), seq_len, 1))
-    train_Y = np_utils.to_categorical(train_Y)
+    
+    with open('data/mergedfiles2.txt', encoding='UTF-8') as f:
+        for text in f:
+            text = text.strip()
+            for i in range(seq_len-1):
+                temp = [chars_to_id[c] for c in text[:i]]
+                train_X.append(tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre', value=-1)[0])
+                train_Y.append([chars_to_id[c] for c in text[i+1]])
+            for i in range(len(text)-seq_len):
+                train_X.append([chars_to_id[c] for c in text[i:i+seq_len]])
+                train_Y.append([chars_to_id[c] for c in text[i+seq_len]])
+            train_X = np.reshape(train_X, (len(train_X), seq_len, 1))
+            train_Y = np_utils.to_categorical(train_Y)
 
     return train_X, train_Y
     
@@ -45,7 +48,9 @@ def run_pred(model, data):
     # your code here
     print(id_to_chars)
     preds = []
+    right = 0
     for inp in data:
+        inp, correct = inp.split("\t")
         temp = []
         inp_to_id = [chars_to_id[c] for c in inp]
         temp.append(inp_to_id)
@@ -55,6 +60,8 @@ def run_pred(model, data):
         sorted_guesses = sorted(enumerate(top_guesses[0]), key = lambda e:  e[1], reverse=True)
         top_3 = [id_to_chars[c[0]] for c in sorted_guesses[:3]]
         preds.append(''.join(top_3))
+        right += 1 if correct in top_3 else 0
+    print(right/len(preds))
     return preds
 
 
