@@ -22,7 +22,7 @@ threshold = 50
 chars_to_id = dict()
 id_to_chars = dict()
 language_to_dictionary = dict()
-language_set = ['zh', 'es', 'en', 'ar', 'pt', 'ru', 'ja', 'fr']
+language_set = ['zh', 'es', 'en', 'ar', 'pt', 'ru', 'ja', 'fr', 'bn', 'hi']
 models_dict = dict()
 
 def load_training_data(language):

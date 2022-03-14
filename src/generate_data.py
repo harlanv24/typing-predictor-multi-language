@@ -5,8 +5,8 @@ import os
 wiki_wiki = wikipediaapi.Wikipedia('en')
 
 chromedriver_path = "C:/Users/harlan/Downloads/chromedriver_win32/chromedriver.exe"
-lang_codes = ['hi', 'bn']
-article_counts = {'hi' : 0, 'bn' : 0}
+lang_codes = ['hi']
+article_counts = {'hi' : 0}
 num_docs =  500
 
 
@@ -39,7 +39,7 @@ while sum(article_counts.values()) < num_docs * 10:
         if not os.path.exists('./data/'+ lang):
             os.makedirs('./data/' + lang)
         page = page.langlinks[lang]
-        fp = open('./data/' + lang + '/' + str(article_counts[lang] + 1) + "_k" + ".txt", "w", encoding = 'utf-8')
+        fp = open('./data/' + lang + '/' + str(article_counts[lang] + 1) + "__" + ".txt", "w", encoding = 'utf-8')
         fp.write(page.text.replace("== References ==", ""))
         article_counts[lang] += 1
         fp.close()
