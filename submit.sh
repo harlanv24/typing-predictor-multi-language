@@ -6,10 +6,10 @@ rm -rf submit submit.zip
 mkdir -p submit
 
 # submit team.txt
-printf "Victor Zhong,vzhong\nNoah Smith,nasmith\nSanta Claus,sclaus" > submit/team.txt
+printf "Gantcho Dimitrov,gantcho\nHarlan Verthein,harlanv\nSree Prasanna Rajagopal,sreer" > submit/team.txt
 
 # train model
-python src/myprogram.py train --work_dir work
+# python src/myprogram.py train --work_dir work
 
 # make predictions on example data submit it in pred.txt
 python src/myprogram.py test --work_dir work --test_data example/input.txt --test_output submit/pred.txt
