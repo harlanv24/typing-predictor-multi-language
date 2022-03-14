@@ -65,9 +65,7 @@ def load_training_data(language):
 def run_pred(data):
     # your code here
     preds = []
-    right = 0
     for inp in data:
-        inp, correct = inp.split("\t")
         # check for language type here
         try:
             lang_pred = detect(inp)
@@ -88,8 +86,6 @@ def run_pred(data):
         sorted_guesses = sorted(enumerate(top_guesses[0]), key = lambda e:  e[1], reverse=True)
         top_3 = [id_to_chars[c[0]] for c in sorted_guesses[:3]]
         preds.append(''.join(top_3))
-        right += 1 if correct in top_3 else 0
-    print(right/len(preds))
     return preds
 
 def write_pred(preds, fname):
