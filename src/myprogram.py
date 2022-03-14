@@ -9,6 +9,7 @@ from keras.optimizers import *
 from keras.models import Sequential
 from keras.utils import np_utils
 from keras.layers import Dropout, Dense, LSTM
+from langdetect.lang_detect_exception import LangDetectException
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 # dictionary of language -> model here, to be accessed for predictions once input language is detected
@@ -17,14 +18,14 @@ epochs = 30
 dropout = 0.1
 seq_len = 7
 bs = 64
-threshold = 10
+threshold = 50
 chars_to_id = dict()
 id_to_chars = dict()
-language_set = ['zh', 'es','en', 'hi', 'ar', 'pt', 'bn', 'ru', 'ja', 'fr']
+language_to_dictionary = dict()
+language_set = ['zh', 'es', 'en', 'ar', 'pt', 'ru', 'ja', 'fr']
 models_dict = dict()
 
 def load_training_data(language):
-    # loop through languages, store model for every language
     with open(f'data/{language}/mergedfiles.txt', encoding='UTF-8') as f:
         text = f.read().replace('\n',' ')
     counts = {}
@@ -63,20 +64,22 @@ def load_training_data(language):
 
 def run_pred(data):
     # your code here
-    print(id_to_chars)
     preds = []
     right = 0
     for inp in data:
         inp, correct = inp.split("\t")
         # check for language type here
-        lang_pred = detect(inp)
+        try:
+            lang_pred = detect(inp)
+        except LangDetectException:
+            lang_pred = 'en'
         if lang_pred == 'zh-cn':
             lang_pred = 'zh'
-        
         if lang_pred not in language_set:
             lang_pred = 'en'
-
         temp = []
+        chars_to_id = language_to_dictionary[lang_pred][0]
+        id_to_chars = language_to_dictionary[lang_pred][1]
         inp_to_id = [chars_to_id[c] if c in chars_to_id else chars_to_id['<unk>'] for c in inp]
         temp.append(inp_to_id)
         padded_ids = tf.keras.preprocessing.sequence.pad_sequences(temp, maxlen = seq_len, padding='pre', value=-1)[0]
@@ -111,7 +114,7 @@ class MyModel():
     def load_test_data(cls, fname):
         # your code here
         data = []
-        with open(fname) as f:
+        with open(fname, encoding='utf-8') as f:
             for line in f:
                 inp = line[:-1]  # the last character is a newline
                 data.append(inp)
@@ -137,10 +140,11 @@ class MyModel():
     @classmethod
     def load(cls, work_dir, language):
         # your code here
-        global chars_to_id, id_to_chars
-        path = os.path.join(work_dir, 'trained_model')
+        global language_to_dictionary
+        path = os.path.join(work_dir, f'trained_model_{language}')
         with open(path + f"/chars_to_id_dict_{language}.pkl",  "rb") as pfile:
             chars_to_id, id_to_chars = pickle.load(pfile)
+            language_to_dictionary[language] = (chars_to_id, id_to_chars)
         return tf.keras.models.load_model(path)
         # this particular model has nothing to load, but for demonstration purposes we will load a blank file
         # with open(os.path.join(work_dir, 'model.checkpoint')) as f:
